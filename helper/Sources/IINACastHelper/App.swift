@@ -1,50 +1,49 @@
 import Vapor
 import Foundation
-import ArgumentParser
 
-// MARK: - CLI Entry Point
+// MARK: - Main Entry Point
 
 @main
-struct IINACastHelper: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "iina-cast-helper",
-        abstract: "Helper process for IINA Cast Plugin"
-    )
+struct IINACastHelper {
+    static func main() async throws {
+        // Parse port from environment or use default
+        let port = Int(ProcessInfo.processInfo.environment["PORT"] ?? "9876") ?? 9876
 
-    @ArgumentParser.Option(name: .shortAndLong, help: "Port to listen on")
-    var port: Int = 9876
+        var env = try Environment.detect()
+        try LoggingSystem.bootstrap(from: &env)
 
-    @ArgumentParser.Option(name: .long, help: "Media server port")
-    var mediaPort: Int = 9877
+        let app = try await Application.make(env)
 
-    @ArgumentParser.Flag(name: .long, help: "Run as daemon")
-    var daemon: Bool = false
+        defer {
+            Task {
+                try? await app.asyncShutdown()
+            }
+        }
 
-    @ArgumentParser.Flag(name: .shortAndLong, help: "Verbose logging")
-    var verbose: Bool = false
+        do {
+            // Configure server
+            app.http.server.configuration.hostname = "127.0.0.1"
+            app.http.server.configuration.port = port
 
-    mutating func run() async throws {
-        let app = try await Application.make(.production)
+            // Setup routes
+            try configureRoutes(app)
 
-        // Configure
-        app.http.server.configuration.port = port
-        app.http.server.configuration.hostname = "127.0.0.1"
+            // Register media server routes
+            MediaServer.registerRoutes(app)
 
-        // Setup routes
-        try configureRoutes(app)
+            // Start discovery
+            let discovery = DeviceDiscovery.shared
+            await discovery.startDiscovery()
 
-        // Register media server routes
-        MediaServer.registerRoutes(app)
+            print("IINA Cast Helper running on port \(port)")
+            print("Media server available on port \(port)")
 
-        // Start discovery
-        let discovery = DeviceDiscovery.shared
-        await discovery.startDiscovery()
-
-        print("IINA Cast Helper running on port \(port)")
-        print("Media server available on port \(port)")
-
-        defer { Task { try? await app.asyncShutdown() } }
-        try await app.execute()
+            try await app.execute()
+        } catch {
+            app.logger.error("Fatal error: \(error)")
+            try? await app.asyncShutdown()
+            throw error
+        }
     }
 }
 

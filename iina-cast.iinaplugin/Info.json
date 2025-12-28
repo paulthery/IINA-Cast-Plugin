@@ -12,7 +12,8 @@
   "globalEntry": "global.js",
   "preferencePage": "preferences.html",
   "sidebarTab": {
-    "name": "Cast"
+    "name": "Cast",
+    "view": "ui/sidebar.html"
   },
   "permissions": [
     "show-osd",

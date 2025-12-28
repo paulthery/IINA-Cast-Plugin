@@ -59,7 +59,10 @@ cd ..
 
 # Copy helper binary into plugin
 mkdir -p iina-cast.iinaplugin/helper
-cp helper/.build/release/IINACastHelper iina-cast.iinaplugin/helper/
+cp helper/.build/arm64-apple-macosx/release/IINACastHelper iina-cast.iinaplugin/helper/
+
+# Remove quarantine attribute (required for unsigned binaries)
+xattr -cr iina-cast.iinaplugin/helper/IINACastHelper
 
 # Install plugin
 mkdir -p ~/Library/Application\ Support/IINA/plugins
