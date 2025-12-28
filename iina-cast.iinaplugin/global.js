@@ -9,8 +9,8 @@ const { global, utils, http, file, preferences, console } = iina;
 // Configuration
 const HELPER_PORT = preferences.get("helperPort") || 9876;
 const HELPER_URL = `http://localhost:${HELPER_PORT}`;
-const HELPER_BINARY = "@data/bin/iina-cast-helper";
-const HELPER_DOWNLOAD_URL = "https://github.com/yourusername/IINA-Cast-Plugin/releases/latest/download/iina-cast-helper-macos";
+const HELPER_BINARY = "@plugin/helper/IINACastHelper";
+const HELPER_DOWNLOAD_URL = "https://github.com/paulthery/IINA-Cast-Plugin/releases/latest/download/IINACastHelper";
 
 let helperProcess = null;
 let helperRunning = false;
@@ -20,33 +20,24 @@ let helperRunning = false;
 // ============================================================================
 
 async function ensureHelperExists() {
+    const helperPath = file.resolvePath(HELPER_BINARY);
+
     if (file.exists(HELPER_BINARY)) {
-        console.log("Helper binary found");
-        return true;
-    }
-    
-    console.log("Downloading helper binary...");
-    
-    try {
-        // Create bin directory if needed
-        const binDir = "@data/bin";
-        if (!file.exists(binDir)) {
-            await utils.exec("mkdir", ["-p", file.resolvePath(binDir)]);
+        console.log("Helper binary found at: " + helperPath);
+
+        // Ensure it's executable
+        try {
+            await utils.exec("chmod", ["+x", helperPath]);
+        } catch (e) {
+            console.log("Note: Could not set executable permission: " + e);
         }
-        
-        // Download helper
-        await http.download(HELPER_DOWNLOAD_URL, HELPER_BINARY);
-        
-        // Make executable
-        await utils.exec("chmod", ["+x", file.resolvePath(HELPER_BINARY)]);
-        
-        console.log("Helper binary downloaded and ready");
+
         return true;
-        
-    } catch (e) {
-        console.log("Failed to download helper: " + e);
-        return false;
     }
+
+    console.log("Helper binary not found at: " + helperPath);
+    console.log("Please ensure IINACastHelper is in the plugin's helper/ directory");
+    return false;
 }
 
 async function isHelperRunning() {
