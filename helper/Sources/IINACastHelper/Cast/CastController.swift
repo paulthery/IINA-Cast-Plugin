@@ -1,47 +1,51 @@
 import Foundation
-import OpenCastSwift
+import NIO
+import NIOSSL
 
-/// Controls casting to Chromecast and DLNA devices
+/// Controls casting to Chromecast, DLNA, and AirPlay devices
 actor CastController {
     static let shared = CastController()
-    
+
     private var currentDevice: CastDevice?
-    private var chromecastClient: CastClient?
-    // private var dlnaClient: DLNAClient?
-    
+    private var chromecastClient: ChromecastClient?
+    private var dlnaClient: DLNAClient?
+    private var airplayClient: AirPlayClient?
+
     private var currentPosition: Double = 0
     private var currentDuration: Double = 0
     private var isPaused: Bool = false
-    
+
     private init() {}
-    
+
     // MARK: - Public API
-    
+
     func startCast(deviceId: String, mediaUrl: String, position: Double?) async throws {
         guard let device = await DeviceDiscovery.shared.getDevice(id: deviceId) else {
             throw CastError.deviceNotFound
         }
-        
+
         // Stop any existing cast
         try? await stopCast()
-        
+
         currentDevice = device
-        
+
         switch device.type {
         case "chromecast":
             try await startChromecastSession(device: device, mediaUrl: mediaUrl, position: position ?? 0)
         case "dlna":
             try await startDLNASession(device: device, mediaUrl: mediaUrl, position: position ?? 0)
+        case "airplay":
+            try await startAirPlaySession(device: device, mediaUrl: mediaUrl, position: position ?? 0)
         default:
             throw CastError.unsupportedProtocol
         }
     }
-    
+
     func control(action: String, value: Double?) async throws {
         guard currentDevice != nil else {
             throw CastError.notCasting
         }
-        
+
         switch action {
         case "play":
             try await play()
@@ -59,21 +63,26 @@ actor CastController {
             throw CastError.unknownAction
         }
     }
-    
+
     func stopCast() async throws {
         if let client = chromecastClient {
-            client.disconnect()
+            await client.disconnect()
             chromecastClient = nil
         }
-        
-        // Stop DLNA session if active
-        
+
+        if let client = airplayClient {
+            try? await client.stop()
+            await client.disconnect()
+            airplayClient = nil
+        }
+
+        dlnaClient = nil
         currentDevice = nil
         currentPosition = 0
         currentDuration = 0
         isPaused = false
     }
-    
+
     func getStatus() -> CastStatus {
         return CastStatus(
             casting: currentDevice != nil,
@@ -84,152 +93,118 @@ actor CastController {
             paused: isPaused
         )
     }
-    
+
     // MARK: - Chromecast Implementation
-    
+
     private func startChromecastSession(device: CastDevice, mediaUrl: String, position: Double) async throws {
-        // Parse host and port from address
-        let components = device.address.split(separator: ":")
-        guard components.count == 2,
-              let port = UInt16(components[1]) else {
+        guard let (host, port) = parseAddress(device.address) else {
             throw CastError.invalidAddress
         }
-        
-        let host = String(components[0])
-        
-        // Create Chromecast client
-        let scanner = CastDeviceScanner()
-        // In real implementation, use discovered device directly
-        
-        // For now, create media info and load
-        let mediaInfo = CastMediaInfo(
-            contentId: mediaUrl,
-            streamType: .buffered,
-            contentType: "video/mp4"
-        )
-        
-        // TODO: Connect to device and load media
-        // This requires proper OpenCastSwift integration
-        
-        print("Starting Chromecast session to \(host):\(port) with \(mediaUrl)")
+
+        let client = ChromecastClient(host: host, port: port)
+        chromecastClient = client
+
+        try await client.connect()
+        try await client.launchDefaultMediaReceiver()
+        try await client.loadMedia(url: mediaUrl, contentType: "video/mp4", startPosition: position)
+
+        print("Started Chromecast session to \(device.name)")
     }
-    
+
     // MARK: - DLNA Implementation
-    
+
     private func startDLNASession(device: CastDevice, mediaUrl: String, position: Double) async throws {
-        // DLNA uses SOAP over HTTP
-        // Send SetAVTransportURI action
-        
         guard let baseURL = URL(string: device.address) else {
             throw CastError.invalidAddress
         }
-        
-        let controlURL = baseURL.appendingPathComponent("AVTransport/control")
-        
-        let soapBody = """
-        <?xml version="1.0" encoding="utf-8"?>
-        <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-            <s:Body>
-                <u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">
-                    <InstanceID>0</InstanceID>
-                    <CurrentURI>\(mediaUrl)</CurrentURI>
-                    <CurrentURIMetaData></CurrentURIMetaData>
-                </u:SetAVTransportURI>
-            </s:Body>
-        </s:Envelope>
-        """
-        
-        var request = URLRequest(url: controlURL)
-        request.httpMethod = "POST"
-        request.setValue("text/xml; charset=utf-8", forHTTPHeaderField: "Content-Type")
-        request.setValue("\"urn:schemas-upnp-org:service:AVTransport:1#SetAVTransportURI\"", forHTTPHeaderField: "SOAPACTION")
-        request.httpBody = soapBody.data(using: .utf8)
-        
-        let (_, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw CastError.dlnaError
-        }
-        
-        // Send Play action
-        try await sendDLNAAction(controlURL: controlURL, action: "Play")
-        
-        // Seek if position > 0
+
+        let client = DLNAClient(baseURL: baseURL)
+        dlnaClient = client
+
+        try await client.setAVTransportURI(mediaUrl)
+        try await client.play()
+
         if position > 0 {
-            try await seek(to: position)
+            try await client.seek(to: position)
         }
-        
+
         print("Started DLNA session to \(device.name)")
     }
-    
-    private func sendDLNAAction(controlURL: URL, action: String, args: String = "<Speed>1</Speed>") async throws {
-        let soapBody = """
-        <?xml version="1.0" encoding="utf-8"?>
-        <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
-            <s:Body>
-                <u:\(action) xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">
-                    <InstanceID>0</InstanceID>
-                    \(args)
-                </u:\(action)>
-            </s:Body>
-        </s:Envelope>
-        """
-        
-        var request = URLRequest(url: controlURL)
-        request.httpMethod = "POST"
-        request.setValue("text/xml; charset=utf-8", forHTTPHeaderField: "Content-Type")
-        request.setValue("\"urn:schemas-upnp-org:service:AVTransport:1#\(action)\"", forHTTPHeaderField: "SOAPACTION")
-        request.httpBody = soapBody.data(using: .utf8)
-        
-        let (_, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw CastError.dlnaError
-        }
+
+    // MARK: - AirPlay Implementation
+
+    private func startAirPlaySession(device: CastDevice, mediaUrl: String, position: Double) async throws {
+        let client = AirPlayClient(host: device.address, port: device.port > 0 ? device.port : 7000)
+        airplayClient = client
+
+        try await client.play(url: mediaUrl, startPosition: position)
+
+        print("Started AirPlay session to \(device.name)")
     }
-    
+
     // MARK: - Playback Control
-    
+
     private func play() async throws {
         isPaused = false
-        
-        if currentDevice?.type == "chromecast" {
-            // chromecastClient?.play()
-        } else if currentDevice?.type == "dlna" {
-            // Send DLNA Play
+
+        if let client = chromecastClient {
+            try await client.play()
+        } else if let client = dlnaClient {
+            try await client.play()
+        } else if let client = airplayClient {
+            try await client.resume()
         }
     }
-    
+
     private func pause() async throws {
         isPaused = true
-        
-        if currentDevice?.type == "chromecast" {
-            // chromecastClient?.pause()
-        } else if currentDevice?.type == "dlna" {
-            // Send DLNA Pause
+
+        if let client = chromecastClient {
+            try await client.pause()
+        } else if let client = dlnaClient {
+            try await client.pause()
+        } else if let client = airplayClient {
+            try await client.pause()
         }
     }
-    
+
     private func seek(to position: Double) async throws {
         currentPosition = position
-        
-        if currentDevice?.type == "chromecast" {
-            // chromecastClient?.seek(to: position)
-        } else if currentDevice?.type == "dlna" {
-            // Format time for DLNA (HH:MM:SS)
-            let hours = Int(position) / 3600
-            let minutes = (Int(position) % 3600) / 60
-            let seconds = Int(position) % 60
-            let timeString = String(format: "%02d:%02d:%02d", hours, minutes, seconds)
-            
-            // Send DLNA Seek
+
+        if let client = chromecastClient {
+            try await client.seek(to: position)
+        } else if let client = dlnaClient {
+            try await client.seek(to: position)
+        } else if let client = airplayClient {
+            try await client.seek(to: position)
         }
     }
-    
+
     private func setVolume(_ level: Double) async throws {
-        // Volume control implementation
+        if let client = chromecastClient {
+            try await client.setVolume(level / 100.0)
+        } else if let client = dlnaClient {
+            try await client.setVolume(Int(level))
+        }
+        // Note: AirPlay volume control requires RenderingControl or system-level API
+    }
+
+    // MARK: - Helpers
+
+    private func parseAddress(_ address: String) -> (host: String, port: Int)? {
+        // Handle both "host:port" and full URLs
+        if address.contains("://") {
+            guard let url = URL(string: address),
+                  let host = url.host else { return nil }
+            return (host, url.port ?? 8009)
+        }
+
+        let components = address.split(separator: ":")
+        guard components.count >= 1 else { return nil }
+
+        let host = String(components[0])
+        let port = components.count > 1 ? Int(components[1]) ?? 8009 : 8009
+        return (host, port)
     }
 }
 
@@ -242,9 +217,10 @@ enum CastError: Error, LocalizedError {
     case unknownAction
     case invalidAddress
     case connectionFailed
-    case dlnaError
-    case chromecastError
-    
+    case dlnaError(String)
+    case chromecastError(String)
+    case timeout
+
     var errorDescription: String? {
         switch self {
         case .deviceNotFound: return "Device not found"
@@ -253,8 +229,9 @@ enum CastError: Error, LocalizedError {
         case .unknownAction: return "Unknown control action"
         case .invalidAddress: return "Invalid device address"
         case .connectionFailed: return "Failed to connect to device"
-        case .dlnaError: return "DLNA operation failed"
-        case .chromecastError: return "Chromecast operation failed"
+        case .dlnaError(let msg): return "DLNA error: \(msg)"
+        case .chromecastError(let msg): return "Chromecast error: \(msg)"
+        case .timeout: return "Operation timed out"
         }
     }
 }

@@ -1,11 +1,13 @@
 ---
 name: iina-cast-plugin
-description: Build a professional casting plugin for IINA (macOS video player) with UPNP/DLNA and Chromecast support. Use when developing the IINA Cast Plugin project — covers hybrid architecture (JS plugin + Swift helper), device discovery (SSDP/mDNS), CASTV2 and SOAP protocols, transcoding pipeline with VideoToolbox, HDR/DV handling, and high-bitrate remux streaming. Inspired by Stremio V4's proven casting implementation.
+description: Build a professional casting plugin for IINA (macOS video player) with UPNP/DLNA, Chromecast, and AirPlay 2 support. Use when developing the IINA Cast Plugin project — covers hybrid architecture (JS plugin + Swift helper), device discovery (SSDP/mDNS), CASTV2, SOAP, and AirPlay HTTP protocols, transcoding pipeline with VideoToolbox, HDR/DV handling, and high-bitrate remux streaming. Inspired by Stremio V4's proven casting implementation.
 ---
 
 # IINA Cast Plugin — Complete Development Guide
 
-Build a native, professional-grade casting plugin for IINA with DLNA and Chromecast support, optimized for high-bitrate content (Blu-ray remux, HDR, Dolby Vision).
+**Author:** Paul Thery — [GitHub](https://github.com/paulthery/IINA-Cast-Plugin)
+
+Build a native, professional-grade casting plugin for IINA with DLNA, Chromecast, and AirPlay 2 support, optimized for high-bitrate content (Blu-ray remux, HDR, Dolby Vision).
 
 ## Target Use Cases
 
@@ -40,10 +42,12 @@ Inspired by **Stremio V4's proven architecture**: separation between UI (plugin)
 │  ├── REST API Server (Vapor)                                                │
 │  ├── Discovery/                                                              │
 │  │   ├── ChromecastDiscovery  → NWBrowser + mDNS (_googlecast._tcp)        │
-│  │   └── DLNADiscovery        → SSDP multicast + device description        │
+│  │   ├── DLNADiscovery        → SSDP multicast + device description        │
+│  │   └── AirPlayDiscovery     → NWBrowser + mDNS (_airplay._tcp)           │
 │  ├── Protocols/                                                              │
 │  │   ├── CASTV2Client         → TLS:8009, Protobuf, Default Media Receiver │
-│  │   └── DLNAClient           → SOAP/HTTP, AVTransport, RenderingControl   │
+│  │   ├── DLNAClient           → SOAP/HTTP, AVTransport, RenderingControl   │
+│  │   └── AirPlayClient        → HTTP:7000, /play /scrub /rate /stop        │
 │  ├── MediaServer/                                                            │
 │  │   ├── HTTPServer           → Range requests, CORS, DLNA headers         │
 │  │   └── ProxyServer          → Stream relay for remote URLs               │
@@ -52,14 +56,14 @@ Inspired by **Stremio V4's proven architecture**: separation between UI (plugin)
 │      ├── TranscodeManager     → FFmpeg + VideoToolbox HW accel             │
 │      └── SubtitleConverter    → SRT/ASS → WebVTT, burn-in                  │
 └──────────────────────────────────────────────────────────────────────────────┘
-                     │                                    │
-    ┌────────────────┴────────────┐    ┌─────────────────┴──────────────────┐
-    ▼                             ▼    ▼                                    ▼
-┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────────┐
-│  Chromecast Ultra   │  │  Samsung TV (DLNA)  │  │  Other DLNA Renderers   │
-│  TLS:8009 (CASTV2)  │  │  SOAP (AVTransport) │  │  LG, Sony, etc.         │
-│  HTTP: media pull   │  │  HTTP: media pull   │  │  HTTP: media pull       │
-└─────────────────────┘  └─────────────────────┘  └─────────────────────────┘
+                     │                          │                        │
+    ┌────────────────┴──────┐    ┌─────────────┴───────────┐    ┌────────┴────────────┐
+    ▼                       ▼    ▼                         ▼    ▼                     ▼
+┌────────────────────┐  ┌────────────────────┐  ┌─────────────────────┐  ┌──────────────────┐
+│  Chromecast Ultra  │  │  Samsung TV (DLNA) │  │  Other DLNA/UPnP    │  │  Apple TV/AirPlay│
+│  TLS:8009 (CASTV2) │  │  SOAP (AVTransport)│  │  LG, Sony, etc.     │  │  HTTP:7000       │
+│  HTTP: media pull  │  │  HTTP: media pull  │  │  HTTP: media pull   │  │  HTTP: media pull│
+└────────────────────┘  └────────────────────┘  └─────────────────────┘  └──────────────────┘
 ```
 
 ## Project Structure
@@ -180,7 +184,7 @@ IINA-Cast-Plugin/
 interface CastDevice {
   id: string;
   name: string;
-  type: "chromecast" | "dlna";
+  type: "chromecast" | "dlna" | "airplay";
   address: string;
   port: number;
   capabilities: {
@@ -308,6 +312,45 @@ SOAPACTION: "urn:schemas-upnp-org:service:AVTransport:1#SetAVTransportURI"
   </s:Body>
 </s:Envelope>
 ```
+
+### AirPlay 2
+
+Discovery flow:
+1. **mDNS Discovery** → `_airplay._tcp.local`
+2. **HTTP Connection** → port 7000 (default)
+3. **Server Info** → `GET /server-info` (returns plist)
+4. **Video Playback** → `POST /play` with binary plist body
+
+Key HTTP endpoints:
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/server-info` | GET | Device capabilities (model, features) |
+| `/play` | POST | Start video playback |
+| `/scrub?position=X` | POST | Seek to position (seconds) |
+| `/rate?value=X` | POST | Set playback rate (0=pause, 1=play) |
+| `/stop` | POST | Stop playback |
+| `/playback-info` | GET | Get current position, duration, state |
+
+Play request (binary plist body):
+```plist
+{
+  "Content-Location": "http://192.168.1.100:9877/media/stream/abc123",
+  "Start-Position": 0.0  // Fraction of duration (0.0 to 1.0)
+}
+```
+
+Common headers for all AirPlay requests:
+```http
+User-Agent: MediaControl/1.0
+X-Apple-Session-ID: <uuid>
+X-Apple-Device-ID: <mac-address>
+```
+
+**Notes:**
+- AirPlay 2 supports H.264/HEVC video with AAC audio
+- Apple TV 4K supports 4K HDR and Dolby Vision
+- Authentication may be required (Home Sharing or pairing)
+- Volume control uses separate RenderingControl or system API
 
 ## Media Server Requirements
 

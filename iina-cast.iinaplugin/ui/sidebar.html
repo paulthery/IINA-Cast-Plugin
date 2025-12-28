@@ -3,118 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <style>
+        :root {
+            --bg-primary: transparent;
+            --bg-secondary: rgba(255,255,255,0.05);
+            --bg-hover: rgba(255,255,255,0.1);
+            --bg-selected: rgba(59, 130, 246, 0.3);
+            --border-selected: rgba(59, 130, 246, 0.5);
+            --text-primary: #fff;
+            --text-secondary: #e0e0e0;
+            --text-muted: #999;
+            --border-color: rgba(255,255,255,0.1);
+            --icon-color: #e0e0e0;
+            --btn-bg: rgba(255,255,255,0.1);
+            --btn-hover: rgba(255,255,255,0.15);
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root {
+                --bg-secondary: rgba(0,0,0,0.05);
+                --bg-hover: rgba(0,0,0,0.1);
+                --bg-selected: rgba(59, 130, 246, 0.2);
+                --border-selected: rgba(59, 130, 246, 0.5);
+                --text-primary: #1a1a1a;
+                --text-secondary: #333;
+                --text-muted: #666;
+                --border-color: rgba(0,0,0,0.1);
+                --icon-color: #333;
+                --btn-bg: rgba(0,0,0,0.08);
+                --btn-hover: rgba(0,0,0,0.12);
+            }
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             font-size: 13px;
-            background: transparent;
-            color: #e0e0e0;
+            background: var(--bg-primary);
+            color: var(--text-secondary);
             padding: 12px;
             user-select: none;
         }
-        
+
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 12px;
             padding-bottom: 8px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid var(--border-color);
         }
-        
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
         .header h2 {
             font-size: 14px;
             font-weight: 600;
-            color: #fff;
+            color: var(--text-primary);
         }
-        
+
+        .header-icon {
+            width: 20px;
+            height: 20px;
+            fill: var(--icon-color);
+        }
+
         .refresh-btn {
-            background: rgba(255,255,255,0.1);
+            background: var(--btn-bg);
             border: none;
             border-radius: 4px;
             padding: 4px 8px;
-            color: #e0e0e0;
+            color: var(--text-secondary);
             cursor: pointer;
             font-size: 12px;
         }
-        
+
         .refresh-btn:hover {
-            background: rgba(255,255,255,0.15);
+            background: var(--btn-hover);
         }
-        
+
         .device-list {
             list-style: none;
         }
-        
+
         .device {
             display: flex;
             align-items: center;
             padding: 10px 12px;
             margin-bottom: 4px;
-            background: rgba(255,255,255,0.05);
+            background: var(--bg-secondary);
             border-radius: 6px;
             cursor: pointer;
             transition: background 0.15s ease;
         }
-        
+
         .device:hover {
-            background: rgba(255,255,255,0.1);
+            background: var(--bg-hover);
         }
-        
+
         .device.selected {
-            background: rgba(59, 130, 246, 0.3);
-            border: 1px solid rgba(59, 130, 246, 0.5);
+            background: var(--bg-selected);
+            border: 1px solid var(--border-selected);
         }
-        
+
         .device-icon {
-            font-size: 20px;
+            width: 24px;
+            height: 24px;
             margin-right: 10px;
+            fill: var(--icon-color);
             opacity: 0.9;
         }
-        
+
+        .device-icon.airplay {
+            fill: var(--icon-color);
+        }
+
         .device-info {
             flex: 1;
             min-width: 0;
         }
-        
+
         .device-name {
             font-weight: 500;
-            color: #fff;
+            color: var(--text-primary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        
+
         .device-type {
             font-size: 11px;
-            color: #999;
+            color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        
+
         .empty-state {
             text-align: center;
             padding: 24px;
-            color: #888;
+            color: var(--text-muted);
         }
-        
+
         .empty-state .icon {
-            font-size: 32px;
-            margin-bottom: 8px;
-            opacity: 0.5;
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 12px;
+            fill: var(--icon-color);
+            opacity: 0.3;
         }
-        
+
         .actions {
             margin-top: 16px;
             padding-top: 12px;
-            border-top: 1px solid rgba(255,255,255,0.1);
+            border-top: 1px solid var(--border-color);
         }
-        
+
         .cast-btn {
             width: 100%;
             padding: 10px 16px;
@@ -126,43 +177,54 @@
             font-weight: 500;
             cursor: pointer;
             transition: background 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
-        
+
         .cast-btn:hover {
             background: #2563eb;
         }
-        
+
         .cast-btn:disabled {
             background: #555;
             cursor: not-allowed;
+            opacity: 0.6;
         }
-        
+
         .cast-btn.stop {
             background: #ef4444;
         }
-        
+
         .cast-btn.stop:hover {
             background: #dc2626;
         }
-        
+
+        .cast-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: white;
+        }
+
         .loading {
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
-            color: #888;
+            color: var(--text-muted);
         }
-        
+
         .spinner {
             width: 16px;
             height: 16px;
-            border: 2px solid #555;
+            border: 2px solid var(--border-color);
             border-top-color: #3b82f6;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin-right: 8px;
         }
-        
+
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
@@ -170,50 +232,73 @@
 </head>
 <body>
     <div class="header">
-        <h2>Cast Devices</h2>
-        <button class="refresh-btn" id="refresh">↻ Refresh</button>
+        <div class="header-title">
+            <svg class="header-icon" viewBox="0 0 800 666.67">
+                <path d="M66.67,0C29.9,0,0,29.9,0,66.67v133.33h66.67V66.67h666.67v533.33h-266.67v66.67h266.67c36.77,0,66.67-29.9,66.67-66.67V66.67c0-36.77-29.9-66.67-66.67-66.67H66.67ZM0,266.67v66.67c172.31,0,314.54,131.41,331.64,299.28,1.14,11.19,1.69,22.56,1.69,34.05h66.67c0-220.57-179.43-400-400-400ZM0,400v66.67c110.3,0,200,89.7,200,200h66.67c0-147.03-119.63-266.67-266.67-266.67ZM0,533.33v133.33h133.33c0-73.63-59.7-133.33-133.33-133.33Z"/>
+            </svg>
+            <h2>Cast</h2>
+        </div>
+        <button class="refresh-btn" id="refresh">Refresh</button>
     </div>
-    
+
     <div id="content">
         <div class="loading">
             <div class="spinner"></div>
             <span>Searching...</span>
         </div>
     </div>
-    
+
     <div class="actions" id="actions" style="display: none;">
-        <button class="cast-btn" id="cast-btn" disabled>Cast</button>
+        <button class="cast-btn" id="cast-btn" disabled>
+            <svg viewBox="0 0 800 666.67">
+                <path d="M66.67,0C29.9,0,0,29.9,0,66.67v133.33h66.67V66.67h666.67v533.33h-266.67v66.67h266.67c36.77,0,66.67-29.9,66.67-66.67V66.67c0-36.77-29.9-66.67-66.67-66.67H66.67ZM0,266.67v66.67c172.31,0,314.54,131.41,331.64,299.28,1.14,11.19,1.69,22.56,1.69,34.05h66.67c0-220.57-179.43-400-400-400ZM0,400v66.67c110.3,0,200,89.7,200,200h66.67c0-147.03-119.63-266.67-266.67-266.67ZM0,533.33v133.33h133.33c0-73.63-59.7-133.33-133.33-133.33Z"/>
+            </svg>
+            <span>Cast</span>
+        </button>
     </div>
-    
+
     <script>
+        // SVG icons for different device types
+        const icons = {
+            cast: `<svg class="device-icon" viewBox="0 0 800 666.67"><path d="M66.67,0C29.9,0,0,29.9,0,66.67v133.33h66.67V66.67h666.67v533.33h-266.67v66.67h266.67c36.77,0,66.67-29.9,66.67-66.67V66.67c0-36.77-29.9-66.67-66.67-66.67H66.67ZM0,266.67v66.67c172.31,0,314.54,131.41,331.64,299.28,1.14,11.19,1.69,22.56,1.69,34.05h66.67c0-220.57-179.43-400-400-400ZM0,400v66.67c110.3,0,200,89.7,200,200h66.67c0-147.03-119.63-266.67-266.67-266.67ZM0,533.33v133.33h133.33c0-73.63-59.7-133.33-133.33-133.33Z"/></svg>`,
+            airplay: `<svg class="device-icon airplay" viewBox="0 0 24 24"><path d="M5 3h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-3l-1-1h4a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h4l-1 1H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M12 13l6 7H6l6-7z"/></svg>`,
+            dlna: `<svg class="device-icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="2"/><line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="2"/></svg>`
+        };
+
         let devices = [];
         let selectedDeviceId = null;
         let isCasting = false;
-        
+
+        function getDeviceIcon(type) {
+            if (type === 'airplay') return icons.airplay;
+            if (type === 'dlna') return icons.dlna;
+            return icons.cast; // chromecast
+        }
+
         function renderDevices() {
             const content = document.getElementById("content");
             const actions = document.getElementById("actions");
             const castBtn = document.getElementById("cast-btn");
-            
+
             if (devices.length === 0) {
                 content.innerHTML = `
                     <div class="empty-state">
-                        <div class="icon">📺</div>
+                        <svg class="icon" viewBox="0 0 800 666.67">
+                            <path d="M66.67,0C29.9,0,0,29.9,0,66.67v133.33h66.67V66.67h666.67v533.33h-266.67v66.67h266.67c36.77,0,66.67-29.9,66.67-66.67V66.67c0-36.77-29.9-66.67-66.67-66.67H66.67ZM0,266.67v66.67c172.31,0,314.54,131.41,331.64,299.28,1.14,11.19,1.69,22.56,1.69,34.05h66.67c0-220.57-179.43-400-400-400ZM0,400v66.67c110.3,0,200,89.7,200,200h66.67c0-147.03-119.63-266.67-266.67-266.67ZM0,533.33v133.33h133.33c0-73.63-59.7-133.33-133.33-133.33Z"/>
+                        </svg>
                         <div>No devices found</div>
                     </div>
                 `;
                 actions.style.display = "none";
                 return;
             }
-            
+
             content.innerHTML = `
                 <ul class="device-list">
                     ${devices.map(d => `
-                        <li class="device ${d.id === selectedDeviceId ? 'selected' : ''}" 
+                        <li class="device ${d.id === selectedDeviceId ? 'selected' : ''}"
                             data-id="${d.id}">
-                            <span class="device-icon">
-                                ${d.type === 'chromecast' ? '📺' : '🔊'}
-                            </span>
+                            ${getDeviceIcon(d.type)}
                             <div class="device-info">
                                 <div class="device-name">${d.name}</div>
                                 <div class="device-type">${d.type}</div>
@@ -222,18 +307,26 @@
                     `).join('')}
                 </ul>
             `;
-            
+
             actions.style.display = "block";
             castBtn.disabled = !selectedDeviceId;
-            
+
             if (isCasting) {
-                castBtn.textContent = "Stop Casting";
+                castBtn.innerHTML = `
+                    <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+                    <span>Stop Casting</span>
+                `;
                 castBtn.classList.add("stop");
             } else {
-                castBtn.textContent = "Cast";
+                castBtn.innerHTML = `
+                    <svg viewBox="0 0 800 666.67">
+                        <path d="M66.67,0C29.9,0,0,29.9,0,66.67v133.33h66.67V66.67h666.67v533.33h-266.67v66.67h266.67c36.77,0,66.67-29.9,66.67-66.67V66.67c0-36.77-29.9-66.67-66.67-66.67H66.67ZM0,266.67v66.67c172.31,0,314.54,131.41,331.64,299.28,1.14,11.19,1.69,22.56,1.69,34.05h66.67c0-220.57-179.43-400-400-400ZM0,400v66.67c110.3,0,200,89.7,200,200h66.67c0-147.03-119.63-266.67-266.67-266.67ZM0,533.33v133.33h133.33c0-73.63-59.7-133.33-133.33-133.33Z"/>
+                    </svg>
+                    <span>Cast</span>
+                `;
                 castBtn.classList.remove("stop");
             }
-            
+
             // Add click handlers
             document.querySelectorAll(".device").forEach(el => {
                 el.addEventListener("click", () => {
@@ -243,23 +336,23 @@
                 });
             });
         }
-        
+
         // Message handlers
         iina.onMessage("devices", (data) => {
             devices = data;
             renderDevices();
         });
-        
+
         iina.onMessage("selected", (deviceId) => {
             selectedDeviceId = deviceId;
             renderDevices();
         });
-        
+
         iina.onMessage("casting", (state) => {
             isCasting = state;
             renderDevices();
         });
-        
+
         // Button handlers
         document.getElementById("refresh").addEventListener("click", () => {
             const content = document.getElementById("content");
@@ -271,7 +364,7 @@
             `;
             iina.postMessage("refresh");
         });
-        
+
         document.getElementById("cast-btn").addEventListener("click", () => {
             if (isCasting) {
                 iina.postMessage("stop");
@@ -279,7 +372,7 @@
                 iina.postMessage("cast");
             }
         });
-        
+
         // Initial load
         iina.postMessage("refresh");
     </script>

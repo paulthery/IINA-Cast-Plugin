@@ -38,7 +38,7 @@ Cast videos from [IINA](https://iina.io) to Chromecast and DLNA/UPNP devices wit
 ### From Source
 
 ```bash
-git clone https://github.com/yourusername/IINA-Cast-Plugin.git
+git clone https://github.com/paulthery/IINA-Cast-Plugin.git
 cd IINA-Cast-Plugin
 
 # Build helper binary
@@ -140,11 +140,14 @@ curl http://localhost:9876/devices
 - Dolby Vision falls back to HDR10 (no consumer device supports DV via cast)
 - Very high bitrate (100+ Mbps) may require Ethernet
 
+## Author
+
+**Paul Thery** — [GitHub](https://github.com/paulthery)
+
 ## Acknowledgments
 
 - Inspired by [Stremio](https://stremio.com) V4 casting implementation
 - [IINA](https://iina.io) for the excellent plugin system
-- [OpenCastSwift](https://github.com/mhmiles/OpenCastSwift) for Chromecast reference
 
 ## License
 

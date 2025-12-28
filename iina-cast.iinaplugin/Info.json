@@ -1,14 +1,13 @@
 {
   "name": "IINA Cast",
-  "identifier": "io.github.iina-cast",
+  "identifier": "com.github.paulthery.iina-cast",
   "version": "1.0.0",
   "minIINAVersion": "1.4.0",
   "author": {
-    "name": "Your Name",
-    "email": "your@email.com",
-    "url": "https://github.com/yourusername/IINA-Cast-Plugin"
+    "name": "Paul Thery",
+    "url": "https://github.com/paulthery/IINA-Cast-Plugin"
   },
-  "description": "Cast videos to Chromecast and DLNA/UPNP devices with transcoding support",
+  "description": "Cast videos to Chromecast, DLNA/UPNP and AirPlay devices with full quality control and transcoding support",
   "entry": "main.js",
   "globalEntry": "global.js",
   "preferencePage": "preferences.html",
@@ -24,9 +23,13 @@
   "preferenceDefaults": {
     "autoDiscovery": true,
     "preferredProtocol": "auto",
-    "transcodingQuality": "high",
-    "transcodingBitrate": 8000,
+    "defaultMode": "direct",
+    "transcodeBitrate": 20000,
+    "transcodeResolution": "source",
+    "audioFallback": "aac",
     "subtitleMode": "auto",
+    "bufferDuration": 60,
+    "prebufferEnabled": true,
     "helperPort": 9876
   }
 }
