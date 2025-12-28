@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: transparent;
+            pointer-events: none;
+        }
+        
+        #cast-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+        }
+        
+        .cast-badge {
+            align-self: flex-end;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 8px 14px;
+            border-radius: 6px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        
+        .cast-badge .icon {
+            font-size: 16px;
+        }
+        
+        .cast-badge .text {
+            font-size: 13px;
+            font-weight: 500;
+            color: white;
+        }
+        
+        .cast-badge .device {
+            color: #3b82f6;
+        }
+        
+        .cast-badge.casting .dot {
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .controls {
+            align-self: center;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            pointer-events: auto;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        .controls.visible {
+            opacity: 1;
+        }
+        
+        .control-btn {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .control-btn.primary {
+            width: 48px;
+            height: 48px;
+            background: #3b82f6;
+            font-size: 20px;
+        }
+        
+        .control-btn.primary:hover {
+            background: #2563eb;
+        }
+        
+        .time-display {
+            font-size: 12px;
+            color: #aaa;
+            font-variant-numeric: tabular-nums;
+            min-width: 100px;
+            text-align: center;
+        }
+        
+        .stop-btn {
+            background: #ef4444;
+        }
+        
+        .stop-btn:hover {
+            background: #dc2626;
+        }
+    </style>
+</head>
+<body>
+    <div id="cast-overlay">
+        <div class="cast-badge casting" id="badge">
+            <span class="dot"></span>
+            <span class="icon">📺</span>
+            <span class="text">Casting to <span class="device" id="device-name">Device</span></span>
+        </div>
+        
+        <div class="controls" id="controls">
+            <button class="control-btn" id="rewind" title="Rewind 10s">⏪</button>
+            <button class="control-btn primary" id="playpause" title="Play/Pause">⏸</button>
+            <button class="control-btn" id="forward" title="Forward 10s">⏩</button>
+            <div class="time-display" id="time">00:00 / 00:00</div>
+            <button class="control-btn stop-btn" id="stop" title="Stop casting">⏹</button>
+        </div>
+    </div>
+    
+    <script>
+        let isPaused = false;
+        let currentTime = 0;
+        let duration = 0;
+        
+        function formatTime(seconds) {
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+        
+        function updateTimeDisplay() {
+            document.getElementById("time").textContent = 
+                `${formatTime(currentTime)} / ${formatTime(duration)}`;
+        }
+        
+        // Message handlers
+        iina.onMessage("device", (name) => {
+            document.getElementById("device-name").textContent = name;
+        });
+        
+        iina.onMessage("status", (data) => {
+            isPaused = data.paused;
+            currentTime = data.position;
+            duration = data.duration;
+            
+            document.getElementById("playpause").textContent = isPaused ? "▶" : "⏸";
+            updateTimeDisplay();
+        });
+        
+        iina.onMessage("showControls", (show) => {
+            document.getElementById("controls").classList.toggle("visible", show);
+        });
+        
+        // Button handlers
+        document.getElementById("playpause").addEventListener("click", () => {
+            iina.postMessage("control", { action: isPaused ? "play" : "pause" });
+        });
+        
+        document.getElementById("rewind").addEventListener("click", () => {
+            iina.postMessage("control", { action: "seek", value: currentTime - 10 });
+        });
+        
+        document.getElementById("forward").addEventListener("click", () => {
+            iina.postMessage("control", { action: "seek", value: currentTime + 10 });
+        });
+        
+        document.getElementById("stop").addEventListener("click", () => {
+            iina.postMessage("stop");
+        });
+        
+        // Show controls on mouse move
+        let hideTimeout;
+        document.addEventListener("mousemove", () => {
+            document.getElementById("controls").classList.add("visible");
+            clearTimeout(hideTimeout);
+            hideTimeout = setTimeout(() => {
+                document.getElementById("controls").classList.remove("visible");
+            }, 3000);
+        });
+    </script>
+</body>
+</html>

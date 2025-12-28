@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 13px;
+            color: #333;
+            padding: 20px;
+            max-width: 500px;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            body { color: #e0e0e0; background: #1e1e1e; }
+            .section { background: #2a2a2a; border-color: #444; }
+            input, select { background: #333; color: #e0e0e0; border-color: #555; }
+            label { color: #ccc; }
+        }
+        
+        h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        
+        .section {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #888;
+            margin-bottom: 12px;
+        }
+        
+        .field {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .field:last-child {
+            margin-bottom: 0;
+        }
+        
+        .field label {
+            flex: 1;
+        }
+        
+        .field-description {
+            font-size: 11px;
+            color: #888;
+            margin-top: 2px;
+        }
+        
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+        
+        input[type="number"],
+        select {
+            width: 120px;
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        select {
+            width: 140px;
+        }
+        
+        .helper-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.05);
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #888;
+        }
+        
+        .status-dot.running { background: #22c55e; }
+        .status-dot.stopped { background: #ef4444; }
+        
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+    </style>
+</head>
+<body>
+    <h2>IINA Cast Settings</h2>
+    
+    <div class="section">
+        <div class="section-title">General</div>
+        
+        <div class="field">
+            <div>
+                <label for="autoDiscovery">Auto-discover devices</label>
+                <div class="field-description">Search for cast devices on startup</div>
+            </div>
+            <input type="checkbox" id="autoDiscovery" checked>
+        </div>
+        
+        <div class="field">
+            <div>
+                <label for="preferredProtocol">Preferred protocol</label>
+                <div class="field-description">Which protocol to prefer when both available</div>
+            </div>
+            <select id="preferredProtocol">
+                <option value="auto">Auto</option>
+                <option value="chromecast">Chromecast</option>
+                <option value="dlna">DLNA/UPNP</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="section">
+        <div class="section-title">Quality</div>
+        
+        <div class="field">
+            <div>
+                <label for="transcodingQuality">Transcoding quality</label>
+                <div class="field-description">Affects encoding speed vs quality</div>
+            </div>
+            <select id="transcodingQuality">
+                <option value="low">Low (fast)</option>
+                <option value="medium">Medium</option>
+                <option value="high" selected>High (slow)</option>
+            </select>
+        </div>
+        
+        <div class="field">
+            <div>
+                <label for="transcodingBitrate">Max bitrate (Mbps)</label>
+                <div class="field-description">Maximum video bitrate when transcoding</div>
+            </div>
+            <input type="number" id="transcodingBitrate" value="8" min="1" max="50">
+        </div>
+    </div>
+    
+    <div class="section">
+        <div class="section-title">Subtitles</div>
+        
+        <div class="field">
+            <div>
+                <label for="subtitleMode">Subtitle handling</label>
+                <div class="field-description">How to handle subtitles when casting</div>
+            </div>
+            <select id="subtitleMode">
+                <option value="auto" selected>Auto (best method)</option>
+                <option value="sidecar">External WebVTT</option>
+                <option value="burnin">Burn into video</option>
+                <option value="off">Disabled</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="section">
+        <div class="section-title">Helper Process</div>
+        
+        <div class="helper-status">
+            <div class="status-dot" id="helperStatus"></div>
+            <span id="helperStatusText">Checking...</span>
+        </div>
+        
+        <div class="field">
+            <div>
+                <label for="helperPort">Helper port</label>
+                <div class="field-description">REST API port for cast helper</div>
+            </div>
+            <input type="number" id="helperPort" value="9876" min="1024" max="65535">
+        </div>
+        
+        <div class="field">
+            <button class="btn btn-secondary" id="restartHelper">Restart Helper</button>
+        </div>
+    </div>
+    
+    <script>
+        // Load preferences
+        const prefs = {
+            autoDiscovery: iina.preferences.get("autoDiscovery"),
+            preferredProtocol: iina.preferences.get("preferredProtocol"),
+            transcodingQuality: iina.preferences.get("transcodingQuality"),
+            transcodingBitrate: iina.preferences.get("transcodingBitrate"),
+            subtitleMode: iina.preferences.get("subtitleMode"),
+            helperPort: iina.preferences.get("helperPort")
+        };
+        
+        // Set initial values
+        document.getElementById("autoDiscovery").checked = prefs.autoDiscovery !== false;
+        document.getElementById("preferredProtocol").value = prefs.preferredProtocol || "auto";
+        document.getElementById("transcodingQuality").value = prefs.transcodingQuality || "high";
+        document.getElementById("transcodingBitrate").value = prefs.transcodingBitrate || 8;
+        document.getElementById("subtitleMode").value = prefs.subtitleMode || "auto";
+        document.getElementById("helperPort").value = prefs.helperPort || 9876;
+        
+        // Save on change
+        document.querySelectorAll("input, select").forEach(el => {
+            el.addEventListener("change", () => {
+                const id = el.id;
+                let value = el.type === "checkbox" ? el.checked : el.value;
+                if (el.type === "number") value = parseInt(value);
+                iina.preferences.set(id, value);
+            });
+        });
+        
+        // Check helper status
+        async function checkHelperStatus() {
+            const port = document.getElementById("helperPort").value;
+            const dot = document.getElementById("helperStatus");
+            const text = document.getElementById("helperStatusText");
+            
+            try {
+                const response = await fetch(`http://localhost:${port}/health`);
+                if (response.ok) {
+                    dot.className = "status-dot running";
+                    text.textContent = "Running";
+                } else {
+                    throw new Error();
+                }
+            } catch {
+                dot.className = "status-dot stopped";
+                text.textContent = "Not running";
+            }
+        }
+        
+        checkHelperStatus();
+        setInterval(checkHelperStatus, 5000);
+        
+        document.getElementById("restartHelper").addEventListener("click", () => {
+            iina.postMessage("restartHelper");
+        });
+    </script>
+</body>
+</html>

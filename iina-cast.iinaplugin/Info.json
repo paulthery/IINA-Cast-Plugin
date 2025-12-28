@@ -1,0 +1,32 @@
+{
+  "name": "IINA Cast",
+  "identifier": "io.github.iina-cast",
+  "version": "1.0.0",
+  "minIINAVersion": "1.4.0",
+  "author": {
+    "name": "Your Name",
+    "email": "your@email.com",
+    "url": "https://github.com/yourusername/IINA-Cast-Plugin"
+  },
+  "description": "Cast videos to Chromecast and DLNA/UPNP devices with transcoding support",
+  "entry": "main.js",
+  "globalEntry": "global.js",
+  "preferencePage": "preferences.html",
+  "sidebarTab": {
+    "name": "Cast"
+  },
+  "permissions": [
+    "show-osd",
+    "video-overlay",
+    "network-request",
+    "file-system"
+  ],
+  "preferenceDefaults": {
+    "autoDiscovery": true,
+    "preferredProtocol": "auto",
+    "transcodingQuality": "high",
+    "transcodingBitrate": 8000,
+    "subtitleMode": "auto",
+    "helperPort": 9876
+  }
+}

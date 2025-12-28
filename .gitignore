@@ -1,0 +1,42 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.xcscmblueprint
+*.xcschemes
+DerivedData/
+*.hmap
+*.ipa
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Build outputs
+helper/.build/
+helper/Package.resolved
+
+# Plugin development
+*.iinaplugin.zip
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Debug
+*.log
+*.dSYM/
+
+# Local config
+.env
+.env.local
